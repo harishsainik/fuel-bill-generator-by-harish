@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fuel Slip Generator (BP)</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="header__title">Fuel Slip Generator</div>
+        <div class="header__subtitle">MVP: Bharat Petroleum only</div>
+      </header>
+
+      <main class="main">
+        <section class="panel">
+          <h2 class="panel__title">Details</h2>
+
+          <div class="grid">
+            <label class="field">
+              <span class="field__label">Receipt No</span>
+              <input id="receiptNo" class="field__input" inputmode="numeric" value="69175" />
+            </label>
+
+            <label class="field">
+              <span class="field__label">Product</span>
+              <input id="product" class="field__input" value="Petrol" />
+            </label>
+
+            <label class="field">
+              <span class="field__label">Price (per L)</span>
+              <input id="pricePerL" class="field__input" inputmode="decimal" value="102.14" />
+            </label>
+
+            <label class="field">
+              <span class="field__label">Amount</span>
+              <input id="amount" class="field__input" inputmode="decimal" value="3000" />
+            </label>
+
+            <label class="field">
+              <span class="field__label">Volume (L)</span>
+              <input id="volume" class="field__input" inputmode="decimal" value="29.37" readonly />
+            </label>
+
+            <label class="field">
+              <span class="field__label">Vehicle Type</span>
+              <input id="vehType" class="field__input" value="Petrol" />
+            </label>
+
+            <label class="field">
+              <span class="field__label">Vehicle No</span>
+              <input id="vehNo" class="field__input" value="UP12BL4376" />
+            </label>
+
+            <label class="field">
+              <span class="field__label">Customer Name</span>
+              <input id="customerName" class="field__input" value="Harish Kumar Saini" />
+            </label>
+
+            <label class="field">
+              <span class="field__label">Date</span>
+              <input id="date" class="field__input" type="date" value="" />
+            </label>
+
+            <label class="field">
+              <span class="field__label">Time</span>
+              <input id="time" class="field__input" type="time" value="" step="60" />
+            </label>
+
+            <label class="field">
+              <span class="field__label">Mode</span>
+              <input id="mode" class="field__input" value="Cash" />
+            </label>
+
+            <label class="field field--full">
+              <span class="field__label">Footer Message</span>
+              <textarea id="footerMsg" class="field__input" rows="3">
+SAVE FUEL YAANI SAVE MONEY
+!! THANKS FOR FUELLING WITH US.
+YOU CAN NOW CALL US ON 303600 (TOLL-FREE)
+FOR QUERIES/COMPLAINTS.
+              </textarea>
+            </label>
+          </div>
+
+          <div class="actions">
+            <button id="recalc" class="btn btn--secondary" type="button">Recalculate Volume</button>
+            <button id="download" class="btn" type="button">Download PDF</button>
+          </div>
+        </section>
+
+        <section class="panel panel--preview">
+          <h2 class="panel__title">Preview (should match slip)</h2>
+          <div class="previewStage">
+            <div class="receiptWrap" aria-label="Receipt preview">
+              <div id="receiptPreview" class="receipt">
+                <img
+                  class="receipt__sideLogo receipt__sideLogo--top"
+                  src="./assets/vendor/side-logo-bw.png"
+                  alt=""
+                />
+                <img
+                  class="receipt__sideLogo receipt__sideLogo--bottom"
+                  src="./assets/vendor/side-logo-bw.png"
+                  alt=""
+                />
+
+                <div class="receipt__logoWrap">
+                  <img
+                    class="receipt__logo"
+                    src="./assets/vendor/pump-logo-bharat-petroleum.webp"
+                    alt="Bharat Petroleum"
+                  />
+                </div>
+
+                <div class="receipt__gapMd"></div>
+                <div class="receipt__center receipt__bold">WELCOME!!!</div>
+                <div class="receipt__gapSm"></div>
+
+                <div class="receipt__center receipt__bold">
+                  GSTIN&nbsp;&nbsp;<span id="pvGst">06AAACH1118D1ZG</span>
+                </div>
+
+                <div class="receipt__center receipt__bold">
+                  <div>Bharat Petroleum</div>
+                  <div>Block A, Sector 30,</div>
+                  <div>Gurugram, Haryana 122003</div>
+                </div>
+
+                <div class="receipt__gapMd"></div>
+
+                <div class="receipt__line receipt__bold">Receipt No.: <span id="pvReceiptNo"></span></div>
+
+                <div class="receipt__gapMd"></div>
+
+                <div class="receipt__gapMd"></div>
+
+                <div class="receipt__line receipt__bold">PRODUCT: <span id="pvProduct"></span></div>
+                <div class="receipt__line receipt__bold">RATE/LTR:&nbsp; ₹ <span id="pvPrice"></span></div>
+                <div class="receipt__line receipt__bold">AMOUNT:&nbsp;&nbsp;&nbsp; ₹ <span id="pvAmount"></span></div>
+                <div class="receipt__line receipt__bold">VOLUME(LTR.): <span id="pvVolume"></span> lt</div>
+
+                <div class="receipt__gapMd"></div>
+
+                <div class="receipt__gapMd"></div>
+
+                <div class="receipt__line receipt__bold">VEH TYPE: <span id="pvVehType"></span></div>
+                <div class="receipt__line receipt__bold">VEH NO: <span id="pvVehNo"></span></div>
+                <div class="receipt__line receipt__bold">CUSTOMER NAME: <span id="pvCustomerName"></span></div>
+
+                <div class="receipt__gapLg"></div>
+
+                <div class="receipt__gapLg"></div>
+
+                <div class="receipt__twoCol">
+                  <div class="receipt__col">
+                    <div class="receipt__bold">Date:</div>
+                    <div class="receipt__bold"><span id="pvDate"></span></div>
+                  </div>
+                  <div class="receipt__col">
+                    <div class="receipt__bold">Time:</div>
+                    <div class="receipt__bold"><span id="pvTime"></span></div>
+                  </div>
+                </div>
+
+                <div class="receipt__gapSm"></div>
+                <div class="receipt__line receipt__bold">MODE: <span id="pvMode"></span></div>
+
+                <div class="receipt__footer" id="pvFooterMsg"></div>
+              </div>
+            </div>
+          </div>
+          <div class="hint">
+            Tip: this is intentionally plain. The PDF output matches this preview.
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
