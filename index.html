@@ -15,81 +15,222 @@
       </header>
 
       <main class="main">
-        <section class="panel">
-          <h2 class="panel__title">Details</h2>
+        <div class="main__left">
+          <section class="panel panel--tabs">
+            <div class="tabs" role="tablist" aria-label="Download mode">
+              <button id="tabBtnSingle" class="tab tab--active" type="button" role="tab" aria-selected="true">
+                Single Download
+              </button>
+              <button id="tabBtnBulk" class="tab" type="button" role="tab" aria-selected="false">
+                Bulk Download
+              </button>
+            </div>
+          </section>
 
-          <div class="grid">
-            <label class="field">
-              <span class="field__label">Receipt No</span>
-              <input id="receiptNo" class="field__input" inputmode="numeric" value="69175" />
-            </label>
+          <section class="panel">
+            <h2 id="singleTitle" class="panel__title">Details (Single)</h2>
 
-            <label class="field">
-              <span class="field__label">Product</span>
-              <input id="product" class="field__input" value="Petrol" />
-            </label>
+            <div id="tabPanelSingle" role="tabpanel" aria-labelledby="tabBtnSingle">
+              <div class="grid">
+                <label class="field">
+                  <span class="field__label">Receipt No</span>
+                  <input id="receiptNo" class="field__input" inputmode="numeric" value="69175" />
+                </label>
 
-            <label class="field">
-              <span class="field__label">Price (per L)</span>
-              <input id="pricePerL" class="field__input" inputmode="decimal" value="102.14" />
-            </label>
+                <label class="field">
+                  <span class="field__label">Product</span>
+                  <input id="product" class="field__input" value="Petrol" />
+                </label>
 
-            <label class="field">
-              <span class="field__label">Amount</span>
-              <input id="amount" class="field__input" inputmode="decimal" value="3000" />
-            </label>
+                <label class="field">
+                  <span class="field__label">Price (per L)</span>
+                  <input id="pricePerL" class="field__input" inputmode="decimal" value="102.14" />
+                </label>
 
-            <label class="field">
-              <span class="field__label">Volume (L)</span>
-              <input id="volume" class="field__input" inputmode="decimal" value="29.37" readonly />
-            </label>
+                <label class="field">
+                  <span class="field__label">Amount</span>
+                  <input id="amount" class="field__input" inputmode="decimal" value="3000" />
+                </label>
 
-            <label class="field">
-              <span class="field__label">Vehicle Type</span>
-              <input id="vehType" class="field__input" value="Petrol" />
-            </label>
+                <label class="field">
+                  <span class="field__label">Volume (L)</span>
+                  <input id="volume" class="field__input" inputmode="decimal" value="29.37" readonly />
+                </label>
 
-            <label class="field">
-              <span class="field__label">Vehicle No</span>
-              <input id="vehNo" class="field__input" value="UP12BL4376" />
-            </label>
+                <label class="field">
+                  <span class="field__label">Vehicle Type</span>
+                  <input id="vehType" class="field__input" value="Petrol" />
+                </label>
 
-            <label class="field">
-              <span class="field__label">Customer Name</span>
-              <input id="customerName" class="field__input" value="Harish Kumar Saini" />
-            </label>
+                <label class="field">
+                  <span class="field__label">Vehicle No</span>
+                  <input id="vehNo" class="field__input" value="UP12BL4376" />
+                </label>
 
-            <label class="field">
-              <span class="field__label">Date</span>
-              <input id="date" class="field__input" type="date" value="" />
-            </label>
+                <label class="field">
+                  <span class="field__label">Customer Name</span>
+                  <input id="customerName" class="field__input" value="Harish Kumar Saini" />
+                </label>
 
-            <label class="field">
-              <span class="field__label">Time</span>
-              <input id="time" class="field__input" type="time" value="" step="60" />
-            </label>
+                <label class="field">
+                  <span class="field__label">Date</span>
+                  <input id="date" class="field__input" type="date" value="" />
+                </label>
 
-            <label class="field">
-              <span class="field__label">Mode</span>
-              <input id="mode" class="field__input" value="Cash" />
-            </label>
+                <label class="field">
+                  <span class="field__label">Time</span>
+                  <input id="time" class="field__input" type="time" value="" step="60" />
+                </label>
 
-            <label class="field field--full">
-              <span class="field__label">Footer Message</span>
-              <textarea id="footerMsg" class="field__input" rows="3">
+                <label class="field">
+                  <span class="field__label">Mode</span>
+                  <input id="mode" class="field__input" value="Cash" />
+                </label>
+
+                <label class="field field--full">
+                  <span class="field__label">Footer Message</span>
+                  <textarea id="footerMsg" class="field__input" rows="3">
 SAVE FUEL YAANI SAVE MONEY
 !! THANKS FOR FUELLING WITH US.
 YOU CAN NOW CALL US ON 303600 (TOLL-FREE)
 FOR QUERIES/COMPLAINTS.
-              </textarea>
-            </label>
-          </div>
+                  </textarea>
+                </label>
+              </div>
 
-          <div class="actions">
-            <button id="recalc" class="btn btn--secondary" type="button">Recalculate Volume</button>
-            <button id="download" class="btn" type="button">Download PDF</button>
-          </div>
-        </section>
+              <div class="actions">
+                <button id="recalc" class="btn btn--secondary" type="button">Recalculate Volume</button>
+                <button id="download" class="btn" type="button">Download PDF</button>
+              </div>
+            </div>
+
+            <div id="tabPanelBulk" role="tabpanel" aria-labelledby="tabBtnBulk" hidden>
+              <h2 class="panel__title">Bulk Download</h2>
+
+              <div class="bulkStep">
+                <div class="bulkStep__row">
+                  <div class="bulkStep__label">Number of receipts</div>
+                  <div class="stepper" aria-label="Number of receipts">
+                    <button id="bulkCountMinus" class="stepper__btn" type="button" aria-label="Decrease">−</button>
+                    <input
+                      id="bulkCount"
+                      class="stepper__input"
+                      value="1"
+                      inputmode="numeric"
+                      pattern="[0-9]*"
+                      aria-label="Receipt count"
+                    />
+                    <button id="bulkCountPlus" class="stepper__btn" type="button" aria-label="Increase">+</button>
+                  </div>
+                  <button id="bulkCountOk" class="btn btn--secondary" type="button">OK</button>
+                </div>
+                <div class="bulkStep__hint">Tip: bulk generation is screenshot-based; keep counts reasonable for speed.</div>
+              </div>
+
+              <div id="bulkConfig" class="grid">
+                <label class="field field--full">
+                  <span class="field__label">Date &amp; Time for each receipt</span>
+                  <div id="bulkDateTimeList" class="bulkList"></div>
+                </label>
+
+                <label class="field">
+                  <span class="field__label">Starting invoice number</span>
+                  <input
+                    id="bulkStartInvoice"
+                    class="field__input"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputmode="numeric"
+                    value="69175"
+                  />
+                </label>
+
+              <label class="field">
+                <span class="field__label">Amount (applies to all)</span>
+                <input id="bulkAmount" class="field__input" inputmode="decimal" value="3000" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Invoice number diff min</span>
+                <input
+                  id="bulkInvDiffMin"
+                  class="field__input"
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputmode="numeric"
+                  value="1"
+                />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Invoice number diff max</span>
+                <input
+                  id="bulkInvDiffMax"
+                  class="field__input"
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputmode="numeric"
+                  value="5"
+                />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Product (default: petrol)</span>
+                <input id="bulkProduct" class="field__input" value="Petrol" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Vehicle Type (default: Petrol)</span>
+                <input id="bulkVehType" class="field__input" value="Petrol" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Price min (per L)</span>
+                <input id="bulkPriceMin" class="field__input" inputmode="decimal" value="100" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Price max (per L)</span>
+                <input id="bulkPriceMax" class="field__input" inputmode="decimal" value="110" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Vehicle Number</span>
+                <input id="bulkVehNo" class="field__input" value="UP12BL4376" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Customer</span>
+                <input id="bulkCustomerName" class="field__input" value="Harish Kumar Saini" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Mode</span>
+                <input id="bulkMode" class="field__input" value="Cash" />
+              </label>
+
+              <label class="field field--full">
+                <span class="field__label">Footer Message</span>
+                <textarea id="bulkFooterMsg" class="field__input" rows="3">
+SAVE FUEL YAANI SAVE MONEY
+!! THANKS FOR FUELLING WITH US.
+YOU CAN NOW CALL US ON 303600 (TOLL-FREE)
+FOR QUERIES/COMPLAINTS.
+                </textarea>
+              </label>
+            </div>
+
+              <div class="actions">
+                <div id="bulkProgress" class="progress" aria-live="polite"></div>
+                <button id="bulkPreviewFirst" class="btn btn--secondary" type="button">Preview first receipt</button>
+                <button id="bulkDownloadZip" class="btn" type="button">Generate &amp; Download ZIP</button>
+              </div>
+            </div>
+          </section>
+        </div>
 
         <section class="panel panel--preview">
           <h2 class="panel__title">Preview (should match slip)</h2>
@@ -181,6 +322,7 @@ FOR QUERIES/COMPLAINTS.
 
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

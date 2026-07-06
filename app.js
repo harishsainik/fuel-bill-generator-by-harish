@@ -1,4 +1,4 @@
-/* global PDFLib, html2canvas */
+/* global PDFLib, html2canvas, JSZip */
 
 const GST_NO = "06AAACH1118D1ZG";
 const STATION_LINES = [
@@ -10,9 +10,20 @@ const STATION_LINES = [
 const $ = (id) => /** @type {HTMLInputElement} */ (document.getElementById(id));
 const pv = (id) => /** @type {HTMLElement} */ (document.getElementById(id));
 
+/** @typedef {"single" | "bulk"} ActiveTab */
+/** @type {ActiveTab} */
+let activeTab = "single";
+
 function parseNum(s) {
   const v = Number(String(s).trim());
   return Number.isFinite(v) ? v : 0;
+}
+
+function parseIntClamped(s, min) {
+  const raw = String(s === undefined || s === null ? "" : s).trim();
+  const v = Number.parseInt(raw, 10);
+  if (!Number.isFinite(v)) return min;
+  return Math.max(min, v);
 }
 
 function fmtMoney(n) {
@@ -86,7 +97,7 @@ function dateForFilename(dateValue) {
   if (m) return `${m[1]}-${m[2]}-${m[3]}`;
 
   // Fallback: sanitize
-  return v.replaceAll("/", "-");
+  return v.replace(/\//g, "-");
 }
 
 function splitCustomerName(name) {
@@ -110,15 +121,13 @@ function splitCustomerName(name) {
   return lines.slice(0, 2);
 }
 
-function renderPreview() {
-  const s = getState();
-
+function renderPreviewFromState(s, { writeVolumeInput } = { writeVolumeInput: false }) {
   pv("pvReceiptNo").textContent = s.receiptNo;
   pv("pvProduct").textContent = String(s.product).toLowerCase();
   pv("pvPrice").textContent = fmt2(s.pricePerL);
   pv("pvAmount").textContent = fmtMoney(s.amount);
   pv("pvVolume").textContent = fmt2(s.volume);
-  $("volume").value = fmt2(s.volume);
+  if (writeVolumeInput) $("volume").value = fmt2(s.volume);
   pv("pvVehType").textContent = String(s.vehType).toLowerCase();
   pv("pvVehNo").textContent = s.vehNo;
 
@@ -131,9 +140,14 @@ function renderPreview() {
   pv("pvFooterMsg").textContent = s.footerMsg;
 }
 
+function renderPreview() {
+  const s = getState();
+  renderPreviewFromState(s, { writeVolumeInput: true });
+}
+
 function recalcVolume() {
   // Kept for UX parity, but volume is always auto-derived.
-  renderPreview();
+  if (activeTab === "single") renderPreview();
 }
 
 function wireNativePickers() {
@@ -153,6 +167,12 @@ function wireNativePickers() {
   attach(timeEl);
 }
 
+function attachNativePicker(el) {
+  if (!el || typeof el.showPicker !== "function") return;
+  el.addEventListener("click", () => el.showPicker());
+  el.addEventListener("focus", () => el.showPicker());
+}
+
 async function fetchBytes(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch ${url}`);
@@ -168,6 +188,16 @@ function saveBytes(bytes, filename) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function saveBlob(blob, filename) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 8000);
 }
 
 async function saveBytesWithPicker(bytes, suggestedName) {
@@ -254,13 +284,7 @@ async function receiptToPngDataUrl() {
   };
 }
 
-async function downloadPdf() {
-  // Ensure preview is synced so capture matches latest inputs
-  renderPreview();
-
-  const receiptNo = $("receiptNo").value.trim();
-  if (!receiptNo) throw new Error("Receipt No is required.");
-
+async function receiptPreviewToPdfBytes() {
   const { PDFDocument } = PDFLib;
   const { dataUrl, cssWidth, cssHeight } = await receiptToPngDataUrl();
 
@@ -270,10 +294,285 @@ async function downloadPdf() {
   const png = await pdfDoc.embedPng(pngBytes);
 
   page.drawImage(png, { x: 0, y: 0, width: cssWidth, height: cssHeight });
+  return await pdfDoc.save();
+}
 
-  const pdfBytes = await pdfDoc.save();
-  const filename = `${receiptNo.replaceAll("/", "-")}-${dateForFilename($("date").value)}.pdf`;
+async function downloadPdf() {
+  // Ensure preview is synced so capture matches latest inputs
+  renderPreview();
+
+  const receiptNo = $("receiptNo").value.trim();
+  if (!receiptNo) throw new Error("Receipt No is required.");
+
+  const pdfBytes = await receiptPreviewToPdfBytes();
+  const filename = `${receiptNo.replace(/\//g, "-")}-${dateForFilename($("date").value)}.pdf`;
   await saveBytesWithPicker(pdfBytes, filename);
+}
+
+function setBulkProgress(msg) {
+  const el = document.getElementById("bulkProgress");
+  if (!el) return;
+  el.textContent = msg || "";
+}
+
+function setActiveTab(next) {
+  activeTab = next;
+
+  const btnSingle = document.getElementById("tabBtnSingle");
+  const btnBulk = document.getElementById("tabBtnBulk");
+  const panelSingle = document.getElementById("tabPanelSingle");
+  const panelBulk = document.getElementById("tabPanelBulk");
+  const singleTitle = document.getElementById("singleTitle");
+  if (singleTitle) singleTitle.hidden = next !== "single";
+
+  if (next === "single") {
+    btnSingle.classList.add("tab--active");
+    btnBulk.classList.remove("tab--active");
+    btnSingle.setAttribute("aria-selected", "true");
+    btnBulk.setAttribute("aria-selected", "false");
+    panelSingle.hidden = false;
+    panelBulk.hidden = true;
+    renderPreview();
+  } else {
+    btnBulk.classList.add("tab--active");
+    btnSingle.classList.remove("tab--active");
+    btnBulk.setAttribute("aria-selected", "true");
+    btnSingle.setAttribute("aria-selected", "false");
+    panelBulk.hidden = false;
+    panelSingle.hidden = true;
+    renderPreviewBulkFirst();
+  }
+}
+
+function bulkCountValue() {
+  const el = /** @type {HTMLInputElement} */ (document.getElementById("bulkCount"));
+  return parseIntClamped(el ? el.value : "", 1);
+}
+
+function clampAndWriteBulkCount() {
+  const el = /** @type {HTMLInputElement} */ (document.getElementById("bulkCount"));
+  const v = bulkCountValue();
+  if (el) el.value = String(v);
+  return v;
+}
+
+function bulkDateId(i) {
+  return `bulkDate_${i}`;
+}
+
+function bulkTimeId(i) {
+  return `bulkTime_${i}`;
+}
+
+function buildBulkDateTimeList(n) {
+  const list = document.getElementById("bulkDateTimeList");
+  if (!list) return;
+
+  list.innerHTML = "";
+  const today = todayYYYYMMDD();
+  const defaultTime = "10:20";
+
+  for (let i = 0; i < n; i += 1) {
+    const row = document.createElement("div");
+    row.className = "bulkRow";
+
+    const title = document.createElement("div");
+    title.className = "bulkRow__title";
+    title.textContent = `Receipt ${i + 1}`;
+
+    /** @type {HTMLInputElement & { showPicker?: () => void }} */
+    const date = document.createElement("input");
+    date.className = "field__input";
+    date.type = "date";
+    date.value = today;
+    date.id = bulkDateId(i);
+
+    /** @type {HTMLInputElement & { showPicker?: () => void }} */
+    const time = document.createElement("input");
+    time.className = "field__input";
+    time.type = "time";
+    time.value = defaultTime;
+    time.step = "60";
+    time.id = bulkTimeId(i);
+
+    attachNativePicker(date);
+    attachNativePicker(time);
+
+    // Preview must always show only 1 receipt (receipt #1).
+    const maybeRender = () => {
+      if (activeTab !== "bulk") return;
+      if (i !== 0) return;
+      renderPreviewBulkFirst();
+    };
+    date.addEventListener("input", maybeRender);
+    time.addEventListener("input", maybeRender);
+
+    row.appendChild(title);
+    row.appendChild(date);
+    row.appendChild(time);
+    list.appendChild(row);
+  }
+}
+
+function randIntInclusive(min, max) {
+  const a = Math.min(min, max);
+  const b = Math.max(min, max);
+  return Math.floor(Math.random() * (b - a + 1)) + a;
+}
+
+function randMoney2(min, max) {
+  const minC = Math.round(parseNum(min) * 100);
+  const maxC = Math.round(parseNum(max) * 100);
+  const cents = randIntInclusive(minC, maxC);
+  return cents / 100;
+}
+
+function buildBulkStateForIndex(i, receiptNo) {
+  const dateEl = /** @type {HTMLInputElement | null} */ (document.getElementById(bulkDateId(i)));
+  const timeEl = /** @type {HTMLInputElement | null} */ (document.getElementById(bulkTimeId(i)));
+  const date = dateEl && dateEl.value ? dateEl.value.trim() : "";
+  const time = timeEl && timeEl.value ? timeEl.value.trim() : "";
+
+  const product = $("bulkProduct").value.trim() || "petrol";
+  const vehType = $("bulkVehType").value.trim() || "petrol";
+  const vehNo = $("bulkVehNo").value.trim();
+  const customerName = $("bulkCustomerName").value.trim();
+  const mode = $("bulkMode").value.trim() || "Cash";
+  const footerMsg = $("bulkFooterMsg").value.trim();
+
+  const amount = parseNum($("bulkAmount").value);
+  const pricePerL = randMoney2($("bulkPriceMin").value, $("bulkPriceMax").value);
+  const volume = computeVolume({ amount, pricePerL });
+
+  return {
+    receiptNo: String(receiptNo === undefined || receiptNo === null ? "" : receiptNo),
+    product,
+    pricePerL,
+    amount,
+    volume,
+    vehType,
+    vehNo,
+    customerName,
+    date,
+    time,
+    mode,
+    footerMsg,
+  };
+}
+
+function renderPreviewBulkFirst() {
+  // Bulk preview is ALWAYS receipt #1
+  const n = clampAndWriteBulkCount();
+  setBulkProgress(`Previewing receipt 1 of ${n}`);
+
+  const start = parseIntClamped($("bulkStartInvoice").value, 1);
+  const s = buildBulkStateForIndex(0, start);
+  renderPreviewFromState(s, { writeVolumeInput: false });
+}
+
+async function downloadBulkZip() {
+  const n = clampAndWriteBulkCount();
+  if (n < 1) throw new Error("Number of receipts must be at least 1.");
+
+  const start = parseIntClamped($("bulkStartInvoice").value, 1);
+  const diffMin = parseIntClamped($("bulkInvDiffMin").value, 0);
+  const diffMax = parseIntClamped($("bulkInvDiffMax").value, diffMin);
+
+  const receiptNos = [];
+  let cur = start;
+  for (let i = 0; i < n; i += 1) {
+    receiptNos.push(cur);
+    const diff = randIntInclusive(diffMin, diffMax);
+    cur += diff;
+  }
+
+  setBulkProgress(`Generating ${n} receipt(s)… (preview always shows receipt 1)`);
+  const zip = new JSZip();
+
+  for (let i = 0; i < n; i += 1) {
+    setBulkProgress(`Generating PDF ${i + 1}/${n}…`);
+    const state = buildBulkStateForIndex(i, receiptNos[i]);
+    renderPreviewFromState(state, { writeVolumeInput: false });
+    // eslint-disable-next-line no-await-in-loop
+    const pdfBytes = await receiptPreviewToPdfBytes();
+
+    const safeReceipt = String(receiptNos[i]).replace(/\//g, "-");
+    const safeDate = dateForFilename(state.date);
+    zip.file(`${safeReceipt}-${safeDate}.pdf`, pdfBytes);
+  }
+
+  setBulkProgress("Zipping…");
+  const blob = await zip.generateAsync({ type: "blob" });
+  const zipName = `bulk-receipts-${dateForFilename(todayYYYYMMDD())}.zip`;
+  saveBlob(blob, zipName);
+  setBulkProgress(`Done. Downloaded ${zipName}`);
+
+  // Restore preview to receipt #1 after bulk run.
+  renderPreviewBulkFirst();
+}
+
+function wireBulk() {
+  // Count stepper
+  $("bulkCountMinus").addEventListener("click", () => {
+    const cur = clampAndWriteBulkCount();
+    $("bulkCount").value = String(Math.max(1, cur - 1));
+  });
+  $("bulkCountPlus").addEventListener("click", () => {
+    const cur = clampAndWriteBulkCount();
+    $("bulkCount").value = String(cur + 1);
+  });
+  $("bulkCount").addEventListener("blur", () => {
+    clampAndWriteBulkCount();
+  });
+  $("bulkCount").addEventListener("input", () => {
+    const v = String($("bulkCount").value || "").replace(/[^\d]/g, "");
+    $("bulkCount").value = v || "1";
+  });
+  $("bulkCountOk").addEventListener("click", () => {
+    const n = clampAndWriteBulkCount();
+    buildBulkDateTimeList(n);
+    if (activeTab === "bulk") renderPreviewBulkFirst();
+  });
+
+  // Common inputs: if bulk tab active, keep preview synced to receipt #1 only.
+  const bulkInputsThatAffectPreview = [
+    "bulkStartInvoice",
+    "bulkAmount",
+    "bulkInvDiffMin",
+    "bulkInvDiffMax",
+    "bulkProduct",
+    "bulkVehType",
+    "bulkPriceMin",
+    "bulkPriceMax",
+    "bulkVehNo",
+    "bulkCustomerName",
+    "bulkMode",
+    "bulkFooterMsg",
+  ];
+  for (const id of bulkInputsThatAffectPreview) {
+    const el = $(id);
+    if (!el) continue;
+    el.addEventListener("input", () => {
+      if (activeTab !== "bulk") return;
+      renderPreviewBulkFirst();
+    });
+  }
+
+  document.getElementById("bulkPreviewFirst").addEventListener("click", () => {
+    if (activeTab !== "bulk") setActiveTab("bulk");
+    renderPreviewBulkFirst();
+  });
+
+  document.getElementById("bulkDownloadZip").addEventListener("click", () => {
+    downloadBulkZip().catch((e) => {
+      // eslint-disable-next-line no-alert
+      alert((e && typeof e === "object" && "message" in e && e.message) || String(e));
+      setBulkProgress("");
+    });
+  });
+
+  // Initial list: always at least 1
+  buildBulkDateTimeList(1);
 }
 
 function wire() {
@@ -291,14 +590,17 @@ function wire() {
     "footerMsg",
   ];
   for (const id of inputs) {
-    $(id).addEventListener("input", renderPreview);
+    $(id).addEventListener("input", () => {
+      if (activeTab !== "single") return;
+      renderPreview();
+    });
   }
   document.getElementById("recalc").addEventListener("click", recalcVolume);
   document.getElementById("download").addEventListener("click", () => {
     downloadPdf().catch((e) => {
       // Keep UI minimal; show a direct message if something fails.
       // eslint-disable-next-line no-alert
-      alert(e?.message || String(e));
+      alert((e && typeof e === "object" && "message" in e && e.message) || String(e));
     });
   });
 
@@ -308,6 +610,11 @@ function wire() {
 
   renderPreview();
   wireNativePickers();
+
+  document.getElementById("tabBtnSingle").addEventListener("click", () => setActiveTab("single"));
+  document.getElementById("tabBtnBulk").addEventListener("click", () => setActiveTab("bulk"));
+
+  wireBulk();
 }
 
 wire();

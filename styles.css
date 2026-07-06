@@ -73,6 +73,12 @@ body {
   align-items: start;
 }
 
+.main__left {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
 @media (max-width: 980px) {
   .main {
     grid-template-columns: 1fr;
@@ -87,12 +93,52 @@ body {
   backdrop-filter: blur(10px);
 }
 
+.panel--tabs {
+  padding: 10px;
+}
+
 .panel__title {
   font-size: 13px;
   margin: 0 0 10px;
   color: rgba(255, 255, 255, 0.85);
   font-weight: 650;
   letter-spacing: 0.1px;
+}
+
+.tabs {
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.tab {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tab--active {
+  background: rgba(37, 99, 235, 0.22);
+  border-color: rgba(96, 165, 250, 0.45);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.tabsHint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .grid {
@@ -145,6 +191,7 @@ body {
   gap: 10px;
   justify-content: flex-end;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .btn {
@@ -167,6 +214,109 @@ body {
 
 .btn--secondary:hover {
   background: rgba(255, 255, 255, 0.12);
+}
+
+.bulkStep {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.24);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.bulkStep__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+@media (max-width: 980px) {
+  .bulkStep__row {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+}
+
+.bulkStep__label {
+  font-weight: 650;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.bulkStep__hint {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepper__btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.stepper__btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.stepper__input {
+  width: 72px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.55);
+  color: rgba(255, 255, 255, 0.92);
+  outline: none;
+  text-align: center;
+  font-weight: 650;
+}
+
+.bulkList {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.bulkRow {
+  display: grid;
+  grid-template-columns: 90px 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 980px) {
+  .bulkRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bulkRow__title {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.progress {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--muted);
+  min-height: 18px;
 }
 
 .panel--preview .hint {
