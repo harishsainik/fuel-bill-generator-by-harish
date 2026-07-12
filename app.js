@@ -1,4 +1,4 @@
-/* global PDFLib, html2canvas, JSZip */
+/* global html2canvas, JSZip */
 
 const GST_NO = "06AAACH1118D1ZG";
 const STATION_LINES = [
@@ -262,7 +262,7 @@ async function waitForReceiptAssets(el) {
   );
 }
 
-async function receiptToPngDataUrl() {
+async function receiptToRgbBytes() {
   const el = document.querySelector(".receiptWrap");
   if (!el) throw new Error("Receipt preview not found");
 
@@ -277,24 +277,116 @@ async function receiptToPngDataUrl() {
   });
 
   const rect = el.getBoundingClientRect();
+  // Avoid JPEG compression artifacts by extracting raw RGB pixels.
+  // We also flatten onto a solid background to guarantee exact background color.
+  const flat = document.createElement("canvas");
+  flat.width = canvas.width;
+  flat.height = canvas.height;
+  const flatCtx = flat.getContext("2d");
+  if (!flatCtx) throw new Error("Canvas 2D context unavailable");
+  flatCtx.fillStyle = "rgb(246, 247, 247)";
+  flatCtx.fillRect(0, 0, flat.width, flat.height);
+  flatCtx.drawImage(canvas, 0, 0);
+
+  const img = flatCtx.getImageData(0, 0, flat.width, flat.height).data;
+  const rgbBytes = new Uint8Array(flat.width * flat.height * 3);
+  for (let i = 0, p = 0; i < img.length; i += 4, p += 3) {
+    rgbBytes[p] = img[i];
+    rgbBytes[p + 1] = img[i + 1];
+    rgbBytes[p + 2] = img[i + 2];
+  }
   return {
-    dataUrl: canvas.toDataURL("image/png"),
+    rgbBytes,
+    imgWidth: flat.width,
+    imgHeight: flat.height,
     cssWidth: rect.width,
     cssHeight: rect.height,
   };
 }
 
+function buildMinimalPdfFromRgb({ rgbBytes, imgWidth, imgHeight, pageWidth, pageHeight, deflatedBytes }) {
+  const encoder = new TextEncoder();
+  /** @type {Uint8Array[]} */
+  const parts = [];
+  let len = 0;
+  const offsets = new Array(6).fill(0);
+
+  const addBytes = (b) => {
+    parts.push(b);
+    len += b.length;
+  };
+  const addStr = (s) => addBytes(encoder.encode(s));
+
+  // PDF header + binary comment line
+  addBytes(new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a, 0x25, 0xff, 0xff, 0xff, 0xff, 0x0a]));
+
+  const beginObj = (n) => {
+    offsets[n] = len;
+    addStr(`${n} 0 obj\n`);
+  };
+  const endObj = () => addStr("endobj\n");
+
+  beginObj(1);
+  addStr("<< /Type /Catalog /Pages 2 0 R >>\n");
+  endObj();
+
+  beginObj(2);
+  addStr("<< /Type /Pages /Kids [3 0 R] /Count 1 >>\n");
+  endObj();
+
+  beginObj(3);
+  addStr(
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\n`,
+  );
+  endObj();
+
+  beginObj(4);
+  const imgStream = deflatedBytes || rgbBytes;
+  const filter = deflatedBytes ? " /Filter /FlateDecode" : "";
+  addStr(
+    `<< /Type /XObject /Subtype /Image /Width ${imgWidth} /Height ${imgHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8${filter} /Length ${imgStream.length} >>\nstream\n`,
+  );
+  addBytes(imgStream);
+  addStr("\nendstream\n");
+  endObj();
+
+  const contentBytes = encoder.encode(`q\n${pageWidth} 0 0 ${pageHeight} 0 0 cm\n/Im0 Do\nQ\n`);
+  beginObj(5);
+  addStr(`<< /Length ${contentBytes.length} >>\nstream\n`);
+  addBytes(contentBytes);
+  addStr("endstream\n");
+  endObj();
+
+  const xrefOffset = len;
+  addStr("xref\n0 6\n");
+  addStr("0000000000 65535 f \n");
+  for (let i = 1; i <= 5; i += 1) {
+    addStr(`${String(offsets[i]).padStart(10, "0")} 00000 n \n`);
+  }
+  addStr("trailer\n<< /Size 6 /Root 1 0 R >>\n");
+  addStr(`startxref\n${xrefOffset}\n%%EOF\n`);
+
+  const out = new Uint8Array(len);
+  let p = 0;
+  for (const part of parts) {
+    out.set(part, p);
+    p += part.length;
+  }
+  return out;
+}
+
 async function receiptPreviewToPdfBytes() {
-  const { PDFDocument } = PDFLib;
-  const { dataUrl, cssWidth, cssHeight } = await receiptToPngDataUrl();
-
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([cssWidth, cssHeight]); // tight page: no black area below
-  const pngBytes = await fetchBytes(dataUrl);
-  const png = await pdfDoc.embedPng(pngBytes);
-
-  page.drawImage(png, { x: 0, y: 0, width: cssWidth, height: cssHeight });
-  return await pdfDoc.save();
+  const { rgbBytes, imgWidth, imgHeight, cssWidth, cssHeight } = await receiptToRgbBytes();
+  const pageWidth = Math.max(1, Math.round(cssWidth));
+  const pageHeight = Math.max(1, Math.round(cssHeight));
+  return buildMinimalPdfFromRgb({
+    rgbBytes,
+    imgWidth,
+    imgHeight,
+    pageWidth,
+    pageHeight,
+    deflatedBytes: null,
+  });
 }
 
 async function downloadPdf() {

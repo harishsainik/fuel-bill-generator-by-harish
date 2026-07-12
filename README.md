@@ -24,6 +24,6 @@ python3 -m http.server 5174
 
 - Simple input form (no fancy UI)
 - Live preview of the slip
-- **Download PDF** (generated in-browser using `pdf-lib`, prompts “Save As” in Chrome)
+- **Download PDF** (generated in-browser, no library “Producer” metadata)
 - BP receipt font + logo aligned with `freeforonline.com` assets (stored under `assets/vendor/`)
 
